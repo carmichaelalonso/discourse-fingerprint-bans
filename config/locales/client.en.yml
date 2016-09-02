@@ -1,0 +1,4 @@
+en:
+  js:
+    fingerprint_ban:
+      title: "Block user's last fingerprint"
