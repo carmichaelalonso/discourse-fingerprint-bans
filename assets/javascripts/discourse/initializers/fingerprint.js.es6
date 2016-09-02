@@ -29,6 +29,6 @@ function loadFingerprintJs(callback) {
 
 	// bind "ready" state event to callback function for when script is loaded
 	fpjs2.onreadystatechange = callback;
-    fpjs2.onload = callback;
+	fpjs2.onload = callback;
 
 }
