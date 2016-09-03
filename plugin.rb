@@ -38,83 +38,80 @@ after_initialize do
 
     require_dependency 'application_serializer'
     class ::FingerprintsSerializer < ApplicationSerializer
-        attributes :id, :user_id, :raw, :created_at
+      attributes :id, :user_id, :raw, :created_at
 
-        def id
-          object[:id]
-        end
-
-        def user_id
-          object[:user_id]
-        end
-
-        def created_by
-          BasicUserSerializer.new(object[:created_by], scope: scope, root: false)
-        end
-
-        def created_at
-          object[:created_at]
-        end
-
+      def id
+        object[:id]
       end
+
+      def user_id
+        object[:user_id]
+      end
+
+      def created_by
+        BasicUserSerializer.new(object[:created_by], scope: scope, root: false)
+      end
+
+      def created_at
+        object[:created_at]
+      end
+
+    end
 
     require_dependency 'application_controller'
     class DiscourseFingerprintBans::FingerprintBansController < ::ApplicationController
-        before_filter :ensure_logged_in
-        #before_filter :ensure_staff
+      before_filter :ensure_logged_in
+      #before_filter :ensure_staff
 
-        def index
-          user = User.where(id: params[:user_id]).first
-          raise Discourse::NotFound if user.blank?
+      def index
+        user = User.where(id: params[:fpt][:user_id]).first
+        raise Discourse::NotFound if user.blank?
 
-          fpts = ::DiscourseFingerprintBans.fingerprints_for(params[:user_id])
-          render json: {
-            extras: { username: user.username },
-            fingerprints: create_json()
-          }
-        end
+        fpts = ::DiscourseFingerprintBans.fingerprints_for(params[:fpt][:user_id])
+        render json: {
+          extras: { username: user.username },
+          fingerprints: create_json()
+        }
+      end
 
-        def create
-          user = User.where(id: params[:user_id]).first
-          raise Discourse::NotFound if user.blank?
-          fingerprint = ::DiscourseStaffNotes.add_fingerprint(user, params[:raw], current_user.id)
+      def create
+        user = User.where(id: params[:user_id]).first
+        raise Discourse::NotFound if user.blank?
+        fingerprint = ::DiscourseStaffNotes.add_fingerprint(user, params[:raw], current_user.id)
 
-          render json: create_json(fingerprint)
-        end
+        render json: create_json(fingerprint)
+      end
 
 
-        protected
+      protected
 
-          def create_json(obj)
-            # Avoid n+1
-            if obj.is_a?(Array)
-              by_ids = {}
-              User.where(id: obj.map {|o| o[:created_by] }).each do |u|
-                by_ids[u.id] = u
-              end
-              obj.each {|o| o[:created_by] = by_ids[o[:created_by].to_i] }
-            else
-              obj[:created_by] = User.where(id: obj[:created_by]).first
-            end
-
-            serialize_data(obj, ::FingerprintsSerializer)
+      def create_json(obj)
+        # Avoid n+1
+        if obj.is_a?(Array)
+          by_ids = {}
+          User.where(id: obj.map {|o| o[:created_by] }).each do |u|
+            by_ids[u.id] = u
           end
-      end
+          obj.each {|o| o[:created_by] = by_ids[o[:created_by].to_i] }
+        else
+          obj[:created_by] = User.where(id: obj[:created_by]).first
+        end
 
-      whitelist_staff_user_custom_field(LAST_FINGERPRINT_FIELD)
-
-      add_to_class(Guardian, :can_delete_staff_notes?) do
-        (SiteSetting.staff_notes_moderators_delete? && user.staff?) || user.admin?
+        serialize_data(obj, ::FingerprintsSerializer)
       end
+    end
 
-      DiscourseFingerprintBans::Engine.routes.draw do
-        get '/' => 'fingerprints#index'
-        post '/' => 'fingerprints#create'
-        delete '/:id' => 'fingerprints#destroy'
-      end
 
-      Discourse::Application.routes.append do
-        mount ::DiscourseFingerprintBans::Engine, at: "/staff_notes"
-      end
+    DiscourseFingerprintBans::Engine.routes.draw do
+      get '/' => 'fingerprints#index'
+      post '/' => 'fingerprints#create'
+      delete '/:id' => 'fingerprints#destroy'
+    end
+
+    Discourse::Application.routes.append do
+      mount ::DiscourseFingerprintBans::Engine, at: "/fingerprint_store"
+    end
+
+  end
 
 end

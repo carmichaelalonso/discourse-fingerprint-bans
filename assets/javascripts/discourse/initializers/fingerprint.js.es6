@@ -8,6 +8,10 @@ export default {
 		// generate a fingerprint async
 		new Fingerprint2().get(function(result, components){
 			console.log(result); // a hash representing device fingerprint
+
+			// try saving
+			this.get('controllers.fingerprint').send('saveFingerprint', result);
+
 		});
 
 	});
